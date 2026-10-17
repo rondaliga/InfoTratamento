@@ -907,7 +907,7 @@
         par('Documentos anexados', String(d.qtdAnexos || 0)) + par('Situação', STATUS.PENDENTE) + '</dl>' +
       (r.anexosIncompletos ? '<p class="cp-obs"><b>Atenção:</b> a solicitação foi registrada, mas alguns anexos não foram enviados por falha de conexão. Informe o protocolo à equipe e reenvie os arquivos.</p>' : '') +
       '<p class="cp-obs"><b>Importante:</b> este documento comprova o <b>registro da solicitação</b> e não representa agendamento confirmado. ' +
-        '<b>Prazo de até 72h úteis para a análise ser concluida.</b> ' +       
+        '<b>Prazo de até 72h úteis.</b><br><br> ' +       
         'Guarde o número do protocolo e acompanhe retornando o contato com a <b>Central de Marcação via ligação (84) 4009-5600 ou WhatsApp (84) 4009-5601.</b></p>' +
       '<p class="cp-foot">Documento gerado eletronicamente em ' + esc(fmtData(new Date())) + ' · Liga Contra o Câncer</p>' +
     '</div>';
