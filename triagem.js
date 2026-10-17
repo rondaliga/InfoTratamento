@@ -48,7 +48,7 @@
 
   /* Status possíveis (o texto é exatamente o que fica salvo no Firestore) */
   const STATUS = { PENDENTE: 'Pendente', AUTORIZADO: 'Autorizado', NAO_AUTORIZADO: 'Não Autorizado', ANALISANDO: 'Analisando' };
-  const TIPOS_ATENDIMENTO = ['1ª vez', 'Reencaminhamento'];
+  const TIPOS_ATENDIMENTO = ['Consulta 1ª vez', 'Reencaminhamento'];
   const STATUS_LISTA = [STATUS.PENDENTE, STATUS.ANALISANDO, STATUS.AUTORIZADO, STATUS.NAO_AUTORIZADO];
   const STATUS_INFO = {
     'Pendente':       { cls: 'pendente',   ico: '🟡', desc: 'Aguardando análise' },
