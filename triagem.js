@@ -557,6 +557,7 @@
               '</select></label></div></header>' +
         '<div class="tg-card-acts">' +
           '<button class="tg-btn" type="button" data-det="' + esc(i.protocolo) + '" aria-expanded="false">Ver detalhes</button>' +
+          '<button class="tg-btn" type="button" data-cp="' + esc(i.protocolo) + '" title="Gerar o comprovante desta solicitação (pode ser gerado várias vezes)">🧾 Comprovante</button>' +
           (ctx.admin ? '<button class="tg-btn danger" type="button" data-del="' + esc(i.protocolo) + '" title="Excluir esta triagem (somente Administrador)">🗑️ Excluir</button>' : '') +
         '</div>' +
         '<dl class="tg-card-meta">' +
@@ -645,6 +646,20 @@
         } catch (e) { bx.disabled = false; aviso('err', erroMsg(e)); }
         return;
       }
+      const bc = ev.target.closest('[data-cp]');
+      if (bc) {
+        if (!it) return;
+        bc.disabled = true;
+        try {
+          if (!it.det) it.det = await detalhes(p);
+          const x = it.det || {};
+          mostrarComprovante({ protocolo: it.protocolo, criadoEm: it.criadoEm, status: it.status },
+            { nome: it.nome, medico: it.medico, medicoEspecialidade: it.medicoEspecialidade, cpf: x.cpf || '', nascimento: x.nascimento, contato: x.contato,
+              convenio: x.convenio, tipoAtendimento: x.tipoAtendimento, qtdAnexos: (x.anexos || []).length });
+        } catch (e) { aviso('err', erroMsg(e)); }
+        bc.disabled = false;
+        return;
+      }
       const bd = ev.target.closest('[data-det]'), bp = ev.target.closest('[data-prev]'), bl = ev.target.closest('[data-dl]');
       if (bd) return abrirDetalhes(card, bd);
       if (!it || !it.det) return;
@@ -702,6 +717,92 @@
     /* expostos para teste */
     _t: { maskCPF: maskCPF, maskTel: maskTel, validarCPF: validarCPF, validarTel: validarTel, validarNascimento: validarNascimento, idadeDe: idadeDe }
   };
+
+  /* ---------- comprovante de solicitação (tela + impressão/PDF) ----------
+     Mesmo layout do "Comprovante de Agendamento": logo, título, seções com linha e pares rótulo/valor. */
+  const LOGO_URL = 'https://ligacontraocancer.com.br/wp-content/themes/v01/assets/img/build/liga-contra-o-cancer-footer-red.f7f3067c.png';
+  const CP_CSS =
+    '.cp{font:14px/1.45 Arial,Helvetica,sans-serif;color:#1c1c1c;background:#fff;padding:26px 30px 22px;text-align:left}' +
+    '.cp *{box-sizing:border-box}' +
+    '.cp-top{display:flex;align-items:center;gap:18px;padding:0 40px 14px 0;border-bottom:3px solid #333}' +
+    '.cp-top img{height:58px;width:auto;display:block}' +
+    '.cp-top h1{flex:1;margin:0;text-align:center;font-size:19px;font-weight:700;color:#111}' +
+    '.cp-proto{margin:18px 0 6px;padding:4px 0 2px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}' +
+    '.cp-proto small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555}' +
+    '.cp-proto b{font:700 26px/1.2 "Courier New",monospace;letter-spacing:.12em;color:#0b3a5e}' +
+    '.cp-st{font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;background:#fff3cd;color:#7a5200;border:1px solid #e6c45a;white-space:nowrap}' +
+    '.cp h2{margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #777;font-size:16px;font-weight:700;color:#111}' +
+    '.cp dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}' +
+    '.cp dl div{min-width:0}' +
+    '.cp dl .full{grid-column:1/-1}' +
+    '.cp dt{display:inline;font-weight:700;color:#111}' +
+    '.cp dt::after{content:": "}' +
+    '.cp dd{display:inline;margin:0;color:#222;overflow-wrap:anywhere}' +
+    '.cp-obs{margin:20px 0 0;padding:10px 14px;border:1px solid #bbb;background:#f6f6f6;font-size:12.5px;color:#333}' +
+    '.cp-obs b{color:#111}' +
+    '.cp-foot{margin-top:14px;font-size:11px;color:#666;text-align:center}' +
+    '@media(max-width:560px){.cp{padding:18px 16px}.cp-top{flex-direction:column;align-items:flex-start;gap:8px;padding-right:36px}.cp-top h1{text-align:left;font-size:16px}.cp dl{grid-template-columns:1fr}.cp-proto b{font-size:21px}}';
+
+  function comprovanteHTML(r, d) {
+    const par = (rot, val, full) => '<div' + (full ? ' class="full"' : '') + '><dt>' + rot + '</dt><dd>' + esc(val || '—') + '</dd></div>';
+    const completo = !!d.cpf;                                     /* 2ª via da consulta pública não tem dados sensíveis */
+    const status = r.status || STATUS.PENDENTE, info = STATUS_INFO[status] || STATUS_INFO[STATUS.PENDENTE];
+    const idade = completo ? (validarNascimento(d.nascimento) ? fmtNascIdade(d.nascimento) : fmtNasc(d.nascimento)) : '';
+    return '<div class="cp">' +
+      '<div class="cp-top"><img src="' + LOGO_URL + '" alt="Liga Contra o Câncer"><h1>Comprovante de Solicitação de Triagem</h1></div>' +
+      '<div class="cp-proto"><div><small>Número do protocolo</small><b>' + esc(r.protocolo) + '</b></div><span class="cp-st">' + esc(status) + ' · ' + esc(info.desc) + '</span></div>' +
+      '<h2>Dados pessoais</h2>' +
+      '<dl>' + par('Nome civil', (d.nome || '').trim(), true) +
+        (completo ? par('CPF', fmtCPF(d.cpf)) + par('Data de nascimento', idade) + par('Contato', fmtTel(d.contato)) + par('Convênio', (d.convenio || '').trim()) : '') + '</dl>' +
+      '<h2>Dados da solicitação</h2>' +
+      '<dl>' + (completo ? par('Tipo de atendimento', d.tipoAtendimento) : '') + par('Especialidade', (d.medicoEspecialidade || '').trim()) +
+        par('Médico sugerido', (d.medico || '').trim() || 'Não informado') + par('Data da solicitação', fmtData(r.criadoEm)) +
+        (completo ? par('Documentos anexados', String(d.qtdAnexos || 0)) : '') + par('Situação', status) + '</dl>' +
+      (r.anexosIncompletos ? '<p class="cp-obs"><b>Atenção:</b> a solicitação foi registrada, mas alguns anexos não foram enviados por falha de conexão. Informe o protocolo à equipe e reenvie os arquivos.</p>' : '') +
+      '<p class="cp-obs"><b>Importante:</b> este documento comprova o <b>registro da solicitação</b> e não representa agendamento confirmado.<br> ' +
+        '<b>Prazo:</b> 72h úteis.<br><br> ' +       
+        'Guarde o número do protocolo e acompanhe retornando o contato com a <b>Central de Marcação via ligação (84) 4009-5600 ou WhatsApp (84) 4009-5601.</b></p>' +
+      '<p class="cp-foot">' + (completo ? '' : '2ª via · ') + 'Documento gerado eletronicamente em ' + esc(fmtData(new Date())) + ' · Liga Contra o Câncer</p>' +
+    '</div>';
+  }
+
+  /* imprime / salva em PDF só o comprovante (iframe oculto: não depende do tema nem do restante da página) */
+  function imprimirComprovante(r, d) {
+    const f = document.createElement('iframe');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(f);
+    const doc = f.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Comprovante ' + esc(r.protocolo) + '</title>' +
+      '<style>@page{size:A4;margin:14mm}body{margin:0}' + CP_CSS + '.cp{padding:0}.cp-top{padding-right:0}</style></head><body>' +
+      comprovanteHTML(r, d) + '</body></html>');
+    doc.close();
+    const limpar = function () { setTimeout(function () { f.remove(); }, 1500); };
+    const disparar = function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { console.error(e); } limpar(); };
+    const img = doc.querySelector('img');
+    if (img && !img.complete) { img.onload = disparar; img.onerror = disparar; }
+    else disparar();
+  }
+
+  function mostrarComprovante(r, d) {
+    if (!document.getElementById('cpCss')) {
+      const st = document.createElement('style'); st.id = 'cpCss'; st.textContent = CP_CSS; document.head.appendChild(st);
+    }
+    const m = UI.openModal({
+      bare: true, size: 'wide',
+      html: comprovanteHTML(r, d),
+      foot: (r.consultar ? '<button class="tg-btn" id="tgIr" type="button">🔍 Consultar</button>' : '') +
+            '<button class="tg-btn" id="tgCopiar" type="button">📋 Copiar Protocolo</button>' +
+            '<button class="tg-btn primary" id="tgPrint" type="button">🖨️ Imprimir / Salvar PDF</button>'
+    });
+    m.foot.querySelector('#tgCopiar').onclick = function () { UI.copy(r.protocolo, 'Protocolo copiado!'); };
+    m.foot.querySelector('#tgPrint').onclick = function () { imprimirComprovante(r, d); };
+    const ir = m.foot.querySelector('#tgIr');
+    if (ir) ir.onclick = function () { UI.closeModal(); r.consultar(); };
+  }
+
+  window.Triagem.mostrarComprovante = mostrarComprovante;
 
   /* =================================================================
      4) INTERFACE DA PÁGINA triagem.html
@@ -867,90 +968,6 @@
   ['dragleave', 'drop'].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
   drop.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files) adicionarArquivos(e.dataTransfer.files); });
 
-  /* ---------- comprovante de solicitação (tela + impressão/PDF) ----------
-     Mesmo layout do "Comprovante de Agendamento": logo, título, seções com linha e pares rótulo/valor. */
-  const LOGO_URL = 'https://ligacontraocancer.com.br/wp-content/themes/v01/assets/img/build/liga-contra-o-cancer-footer-red.f7f3067c.png';
-  const CP_CSS =
-    '.cp{font:14px/1.45 Arial,Helvetica,sans-serif;color:#1c1c1c;background:#fff;padding:26px 30px 22px;text-align:left}' +
-    '.cp *{box-sizing:border-box}' +
-    '.cp-top{display:flex;align-items:center;gap:18px;padding:0 40px 14px 0;border-bottom:3px solid #333}' +
-    '.cp-top img{height:58px;width:auto;display:block}' +
-    '.cp-top h1{flex:1;margin:0;text-align:center;font-size:19px;font-weight:700;color:#111}' +
-    '.cp-proto{margin:18px 0 6px;padding:4px 0 2px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}' +
-    '.cp-proto small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555}' +
-    '.cp-proto b{font:700 26px/1.2 "Courier New",monospace;letter-spacing:.12em;color:#0b3a5e}' +
-    '.cp-st{font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;background:#fff3cd;color:#7a5200;border:1px solid #e6c45a;white-space:nowrap}' +
-    '.cp h2{margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #777;font-size:16px;font-weight:700;color:#111}' +
-    '.cp dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}' +
-    '.cp dl div{min-width:0}' +
-    '.cp dl .full{grid-column:1/-1}' +
-    '.cp dt{display:inline;font-weight:700;color:#111}' +
-    '.cp dt::after{content:": "}' +
-    '.cp dd{display:inline;margin:0;color:#222;overflow-wrap:anywhere}' +
-    '.cp-obs{margin:20px 0 0;padding:10px 14px;border:1px solid #bbb;background:#f6f6f6;font-size:12.5px;color:#333}' +
-    '.cp-obs b{color:#111}' +
-    '.cp-foot{margin-top:14px;font-size:11px;color:#666;text-align:center}' +
-    '@media(max-width:560px){.cp{padding:18px 16px}.cp-top{flex-direction:column;align-items:flex-start;gap:8px;padding-right:36px}.cp-top h1{text-align:left;font-size:16px}.cp dl{grid-template-columns:1fr}.cp-proto b{font-size:21px}}';
-
-  function comprovanteHTML(r, d) {
-    const par = (rot, val, full) => '<div' + (full ? ' class="full"' : '') + '><dt>' + rot + '</dt><dd>' + esc(val || '—') + '</dd></div>';
-    const completo = !!d.cpf;                                     /* 2ª via da consulta pública não tem dados sensíveis */
-    const status = r.status || STATUS.PENDENTE, info = STATUS_INFO[status] || STATUS_INFO[STATUS.PENDENTE];
-    const idade = completo ? (validarNascimento(d.nascimento) ? fmtNascIdade(d.nascimento) : fmtNasc(d.nascimento)) : '';
-    return '<div class="cp">' +
-      '<div class="cp-top"><img src="' + LOGO_URL + '" alt="Liga Contra o Câncer"><h1>Comprovante de Solicitação de Triagem</h1></div>' +
-      '<div class="cp-proto"><div><small>Número do protocolo</small><b>' + esc(r.protocolo) + '</b></div><span class="cp-st">' + esc(status) + ' · ' + esc(info.desc) + '</span></div>' +
-      '<h2>Dados pessoais</h2>' +
-      '<dl>' + par('Nome civil', (d.nome || '').trim(), true) +
-        (completo ? par('CPF', fmtCPF(d.cpf)) + par('Data de nascimento', idade) + par('Contato', fmtTel(d.contato)) + par('Convênio', (d.convenio || '').trim()) : '') + '</dl>' +
-      '<h2>Dados da solicitação</h2>' +
-      '<dl>' + (completo ? par('Tipo de atendimento', d.tipoAtendimento) : '') + par('Especialidade', (d.medicoEspecialidade || '').trim()) +
-        par('Médico sugerido', (d.medico || '').trim() || 'Não informado') + par('Data da solicitação', fmtData(r.criadoEm)) +
-        (completo ? par('Documentos anexados', String(d.qtdAnexos || 0)) : '') + par('Situação', status) + '</dl>' +
-      (r.anexosIncompletos ? '<p class="cp-obs"><b>Atenção:</b> a solicitação foi registrada, mas alguns anexos não foram enviados por falha de conexão. Informe o protocolo à equipe e reenvie os arquivos.</p>' : '') +
-      '<p class="cp-obs"><b>Importante:</b> este documento comprova o <b>registro da solicitação</b> e não representa agendamento confirmado.<br> ' +
-        '<b>Prazo:</b> 72h úteis.<br><br> ' +       
-        'Guarde o número do protocolo e acompanhe retornando o contato com a <b>Central de Marcação via ligação (84) 4009-5600 ou WhatsApp (84) 4009-5601.</b></p>' +
-      '<p class="cp-foot">' + (completo ? '' : '2ª via · ') + 'Documento gerado eletronicamente em ' + esc(fmtData(new Date())) + ' · Liga Contra o Câncer</p>' +
-    '</div>';
-  }
-
-  /* imprime / salva em PDF só o comprovante (iframe oculto: não depende do tema nem do restante da página) */
-  function imprimirComprovante(r, d) {
-    const f = document.createElement('iframe');
-    f.setAttribute('aria-hidden', 'true');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    const doc = f.contentWindow.document;
-    doc.open();
-    doc.write('<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Comprovante ' + esc(r.protocolo) + '</title>' +
-      '<style>@page{size:A4;margin:14mm}body{margin:0}' + CP_CSS + '.cp{padding:0}.cp-top{padding-right:0}</style></head><body>' +
-      comprovanteHTML(r, d) + '</body></html>');
-    doc.close();
-    const limpar = function () { setTimeout(function () { f.remove(); }, 1500); };
-    const disparar = function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { console.error(e); } limpar(); };
-    const img = doc.querySelector('img');
-    if (img && !img.complete) { img.onload = disparar; img.onerror = disparar; }
-    else disparar();
-  }
-
-  function mostrarComprovante(r, d) {
-    if (!document.getElementById('cpCss')) {
-      const st = document.createElement('style'); st.id = 'cpCss'; st.textContent = CP_CSS; document.head.appendChild(st);
-    }
-    const m = UI.openModal({
-      bare: true, size: 'wide',
-      html: comprovanteHTML(r, d),
-      foot: (r.segundaVia ? '' : '<button class="tg-btn" id="tgIr" type="button">🔍 Consultar</button>') +
-            '<button class="tg-btn" id="tgCopiar" type="button">📋 Copiar Protocolo</button>' +
-            '<button class="tg-btn primary" id="tgPrint" type="button">🖨️ Imprimir / Salvar PDF</button>'
-    });
-    m.foot.querySelector('#tgCopiar').onclick = function () { UI.copy(r.protocolo, 'Protocolo copiado!'); };
-    m.foot.querySelector('#tgPrint').onclick = function () { imprimirComprovante(r, d); };
-    const ir = m.foot.querySelector('#tgIr');
-    if (ir) ir.onclick = function () { UI.closeModal(); abrirAba('consultar'); $('triProtocolo').value = r.protocolo; $('triBusca').requestSubmit(); };
-  }
-
   /* ---------- envio ---------- */
   form.addEventListener('submit', async function (ev) {
     ev.preventDefault();
@@ -976,6 +993,7 @@
       form.reset(); arquivos.forEach(liberarPrevia); arquivos = []; renderArquivos(); esconder(msgArq);
       if (idadeEl) idadeEl.textContent = '';
       Object.keys(campos).forEach(function (n) { erroCampo(n, ''); });
+      r.consultar = function () { abrirAba('consultar'); $('triProtocolo').value = r.protocolo; $('triBusca').requestSubmit(); };
       mostrarComprovante(r, dados);
     } catch (e) {
       console.error('Falha ao enviar a solicitação:', e);
@@ -1022,7 +1040,7 @@
       '</article>';
     /* pode ser gerado quantas vezes precisar; usa só os dados públicos (sem CPF/telefone) e o status atual */
     $('tgComprovanteRes').onclick = function () {
-      mostrarComprovante({ protocolo: r.protocolo, criadoEm: r.criadoEm, status: r.status, segundaVia: true },
+      mostrarComprovante({ protocolo: r.protocolo, criadoEm: r.criadoEm, status: r.status },
         { nome: r.nome, medico: r.medico, medicoEspecialidade: r.medicoEspecialidade });
     };
     $('tgCopiarRes').onclick = function () { UI.copy(r.protocolo, 'Protocolo copiado!'); };
