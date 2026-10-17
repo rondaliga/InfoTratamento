@@ -724,14 +724,19 @@
   const CP_CSS =
     '.cp{font:14px/1.45 Arial,Helvetica,sans-serif;color:#1c1c1c;background:#fff;padding:26px 30px 22px;text-align:left}' +
     '.cp *{box-sizing:border-box}' +
-    '.cp-top{display:flex;align-items:center;gap:18px;padding:0 40px 14px 0;border-bottom:3px solid #333}' +
+    /* cores por status (mesmas do selo do painel): --cp-fg texto, --cp-bg fundo, --cp-bd borda, --cp-ac destaque */
+    '.cp{--cp-fg:#7a5200;--cp-bg:#fff3cd;--cp-bd:#e6c45a;--cp-ac:#e0a800;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.cp.st-analisando{--cp-fg:#0b4a7a;--cp-bg:#e3f0fb;--cp-bd:#8dbbe0;--cp-ac:#1f6fa8}' +
+    '.cp.st-autorizado{--cp-fg:#17693a;--cp-bg:#e4f4ea;--cp-bd:#7cc79a;--cp-ac:#2e9e5b}' +
+    '.cp.st-recusado{--cp-fg:#b42318;--cp-bg:#fdeceb;--cp-bd:#ee9a94;--cp-ac:#d64545}' +
+    '.cp-top{display:flex;align-items:center;gap:18px;padding:0 40px 14px 0;border-bottom:3px solid var(--cp-ac)}' +
     '.cp-top img{height:58px;width:auto;display:block}' +
     '.cp-top h1{flex:1;margin:0;text-align:center;font-size:19px;font-weight:700;color:#111}' +
     '.cp-proto{margin:18px 0 6px;padding:4px 0 2px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}' +
     '.cp-proto small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555}' +
-    '.cp-proto b{font:700 26px/1.2 "Courier New",monospace;letter-spacing:.12em;color:#0b3a5e}' +
-    '.cp-st{font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;background:#fff3cd;color:#7a5200;border:1px solid #e6c45a;white-space:nowrap}' +
-    '.cp h2{margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid #777;font-size:16px;font-weight:700;color:#111}' +
+    '.cp-proto b{font:700 26px/1.2 "Courier New",monospace;letter-spacing:.12em;color:var(--cp-fg)}' +
+    '.cp-st{font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;background:var(--cp-bg);color:var(--cp-fg);border:1px solid var(--cp-bd);white-space:nowrap}' +
+    '.cp h2{margin:20px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--cp-ac);font-size:16px;font-weight:700;color:var(--cp-fg)}' +
     '.cp dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}' +
     '.cp dl div{min-width:0}' +
     '.cp dl .full{grid-column:1/-1}' +
@@ -748,7 +753,7 @@
     const completo = !!d.cpf;                                     /* 2ª via da consulta pública não tem dados sensíveis */
     const status = r.status || STATUS.PENDENTE, info = STATUS_INFO[status] || STATUS_INFO[STATUS.PENDENTE];
     const idade = completo ? (validarNascimento(d.nascimento) ? fmtNascIdade(d.nascimento) : fmtNasc(d.nascimento)) : '';
-    return '<div class="cp">' +
+    return '<div class="cp st-' + info.cls + '">' +
       '<div class="cp-top"><img src="' + LOGO_URL + '" alt="Liga Contra o Câncer"><h1>Comprovante de Solicitação de Triagem</h1></div>' +
       '<div class="cp-proto"><div><small>Número do protocolo</small><b>' + esc(r.protocolo) + '</b></div><span class="cp-st">' + esc(status) + ' · ' + esc(info.desc) + '</span></div>' +
       '<h2>Dados pessoais</h2>' +
