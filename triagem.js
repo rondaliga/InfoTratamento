@@ -876,7 +876,7 @@
     '.cp-top{display:flex;align-items:center;gap:18px;padding:0 40px 14px 0;border-bottom:3px solid #333}' +
     '.cp-top img{height:58px;width:auto;display:block}' +
     '.cp-top h1{flex:1;margin:0;text-align:center;font-size:19px;font-weight:700;color:#111}' +
-    '.cp-proto{margin:18px 0 6px;padding:12px 16px;border:1.5px solid #333;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}' +
+    '.cp-proto{margin:18px 0 6px;padding:4px 0 2px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}' +
     '.cp-proto small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#555}' +
     '.cp-proto b{font:700 26px/1.2 "Courier New",monospace;letter-spacing:.12em;color:#0b3a5e}' +
     '.cp-st{font-weight:700;font-size:13px;padding:5px 12px;border-radius:999px;background:#fff3cd;color:#7a5200;border:1px solid #e6c45a;white-space:nowrap}' +
@@ -894,22 +894,24 @@
 
   function comprovanteHTML(r, d) {
     const par = (rot, val, full) => '<div' + (full ? ' class="full"' : '') + '><dt>' + rot + '</dt><dd>' + esc(val || '—') + '</dd></div>';
-    const idade = validarNascimento(d.nascimento) ? fmtNascIdade(d.nascimento) : fmtNasc(d.nascimento);
+    const completo = !!d.cpf;                                     /* 2ª via da consulta pública não tem dados sensíveis */
+    const status = r.status || STATUS.PENDENTE, info = STATUS_INFO[status] || STATUS_INFO[STATUS.PENDENTE];
+    const idade = completo ? (validarNascimento(d.nascimento) ? fmtNascIdade(d.nascimento) : fmtNasc(d.nascimento)) : '';
     return '<div class="cp">' +
       '<div class="cp-top"><img src="' + LOGO_URL + '" alt="Liga Contra o Câncer"><h1>Comprovante de Solicitação de Triagem</h1></div>' +
-      '<div class="cp-proto"><div><small>Número do protocolo</small><b>' + esc(r.protocolo) + '</b></div><span class="cp-st">Pendente · Aguardando análise</span></div>' +
+      '<div class="cp-proto"><div><small>Número do protocolo</small><b>' + esc(r.protocolo) + '</b></div><span class="cp-st">' + esc(status) + ' · ' + esc(info.desc) + '</span></div>' +
       '<h2>Dados pessoais</h2>' +
-      '<dl>' + par('Nome civil', d.nome.trim(), true) + par('CPF', fmtCPF(d.cpf)) + par('Data de nascimento', idade) +
-        par('Contato', fmtTel(d.contato)) + par('Convênio', d.convenio.trim()) + '</dl>' +
+      '<dl>' + par('Nome civil', (d.nome || '').trim(), true) +
+        (completo ? par('CPF', fmtCPF(d.cpf)) + par('Data de nascimento', idade) + par('Contato', fmtTel(d.contato)) + par('Convênio', (d.convenio || '').trim()) : '') + '</dl>' +
       '<h2>Dados da solicitação</h2>' +
-      '<dl>' + par('Tipo de atendimento', d.tipoAtendimento) + par('Especialidade', d.medicoEspecialidade.trim()) +
-        par('Médico sugerido', d.medico.trim() || 'Não informado') + par('Data da solicitação', fmtData(r.criadoEm)) +
-        par('Documentos anexados', String(d.qtdAnexos || 0)) + par('Situação', STATUS.PENDENTE) + '</dl>' +
+      '<dl>' + (completo ? par('Tipo de atendimento', d.tipoAtendimento) : '') + par('Especialidade', (d.medicoEspecialidade || '').trim()) +
+        par('Médico sugerido', (d.medico || '').trim() || 'Não informado') + par('Data da solicitação', fmtData(r.criadoEm)) +
+        (completo ? par('Documentos anexados', String(d.qtdAnexos || 0)) : '') + par('Situação', status) + '</dl>' +
       (r.anexosIncompletos ? '<p class="cp-obs"><b>Atenção:</b> a solicitação foi registrada, mas alguns anexos não foram enviados por falha de conexão. Informe o protocolo à equipe e reenvie os arquivos.</p>' : '') +
       '<p class="cp-obs"><b>Importante:</b> este documento comprova o <b>registro da solicitação</b> e não representa agendamento confirmado.<br> ' +
         '<b>Prazo:</b> 72h úteis.<br><br> ' +       
         'Guarde o número do protocolo e acompanhe retornando o contato com a <b>Central de Marcação via ligação (84) 4009-5600 ou WhatsApp (84) 4009-5601.</b></p>' +
-      '<p class="cp-foot">Documento gerado eletronicamente em ' + esc(fmtData(new Date())) + ' · Liga Contra o Câncer</p>' +
+      '<p class="cp-foot">' + (completo ? '' : '2ª via · ') + 'Documento gerado eletronicamente em ' + esc(fmtData(new Date())) + ' · Liga Contra o Câncer</p>' +
     '</div>';
   }
 
@@ -939,13 +941,14 @@
     const m = UI.openModal({
       bare: true, size: 'wide',
       html: comprovanteHTML(r, d),
-      foot: '<button class="tg-btn" id="tgIr" type="button">🔍 Consultar</button>' +
+      foot: (r.segundaVia ? '' : '<button class="tg-btn" id="tgIr" type="button">🔍 Consultar</button>') +
             '<button class="tg-btn" id="tgCopiar" type="button">📋 Copiar Protocolo</button>' +
             '<button class="tg-btn primary" id="tgPrint" type="button">🖨️ Imprimir / Salvar PDF</button>'
     });
     m.foot.querySelector('#tgCopiar').onclick = function () { UI.copy(r.protocolo, 'Protocolo copiado!'); };
     m.foot.querySelector('#tgPrint').onclick = function () { imprimirComprovante(r, d); };
-    m.foot.querySelector('#tgIr').onclick = function () { UI.closeModal(); abrirAba('consultar'); $('triProtocolo').value = r.protocolo; $('triBusca').requestSubmit(); };
+    const ir = m.foot.querySelector('#tgIr');
+    if (ir) ir.onclick = function () { UI.closeModal(); abrirAba('consultar'); $('triProtocolo').value = r.protocolo; $('triBusca').requestSubmit(); };
   }
 
   /* ---------- envio ---------- */
@@ -1014,8 +1017,14 @@
           '<div><dt>Data da solicitação</dt><dd>' + esc(fmtData(r.criadoEm)) + '</dd></div>' +
           (r.atualizadoEm ? '<div><dt>Última atualização</dt><dd>' + esc(fmtData(r.atualizadoEm)) + '</dd></div>' : '') +
         '</dl>' +
-        '<footer><button class="tg-btn" id="tgCopiarRes" type="button">📋 Copiar Protocolo</button></footer>' +
+        '<footer><button class="tg-btn" id="tgCopiarRes" type="button">📋 Copiar Protocolo</button>' +
+          '<button class="tg-btn primary" id="tgComprovanteRes" type="button">🧾 Gerar comprovante</button></footer>' +
       '</article>';
+    /* pode ser gerado quantas vezes precisar; usa só os dados públicos (sem CPF/telefone) e o status atual */
+    $('tgComprovanteRes').onclick = function () {
+      mostrarComprovante({ protocolo: r.protocolo, criadoEm: r.criadoEm, status: r.status, segundaVia: true },
+        { nome: r.nome, medico: r.medico, medicoEspecialidade: r.medicoEspecialidade });
+    };
     $('tgCopiarRes').onclick = function () { UI.copy(r.protocolo, 'Protocolo copiado!'); };
   }
 

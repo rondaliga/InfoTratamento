@@ -684,7 +684,7 @@ html[data-tema="dark"] .tg-badge.analisando{background:#10304d;color:#9fd0f5}
 .tg-res-dl div:last-child{border-bottom:0}
 .tg-res-dl dt{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--tg-gray)}
 .tg-res-dl dd{margin:2px 0 0;font-weight:600;overflow-wrap:anywhere}
-.tg-res footer{padding:12px 20px;border-top:1px solid var(--tg-line);display:flex;justify-content:flex-end}
+.tg-res footer{padding:12px 20px;border-top:1px solid var(--tg-line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 
 /* comprovante (modal) */
 .tg-ok{text-align:center}

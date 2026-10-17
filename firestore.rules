@@ -218,7 +218,7 @@ service cloud.firestore {
           && request.resource.data.nascimento is string && request.resource.data.nascimento.size() == 10
           && request.resource.data.contato is string && request.resource.data.contato.size() >= 10 && request.resource.data.contato.size() <= 11
           && request.resource.data.convenio is string && request.resource.data.convenio.size() >= 2 && request.resource.data.convenio.size() <= 60
-          && request.resource.data.tipoAtendimento is string && request.resource.data.tipoAtendimento.matches('^(1. vez|Reencaminhamento)$')   // '.' cobre o 'ª' sem depender de acentuação
+          && request.resource.data.tipoAtendimento is string && request.resource.data.tipoAtendimento.matches('^(Consulta 1. vez|Reencaminhamento)$')   // deve ser IGUAL ao valor do formulário ("Consulta 1ª vez"); '.' cobre o 'ª' sem depender de acentuação
           && request.resource.data.anexos is list;   // sem limite de quantidade de anexos
         allow update: if triagemOk() && mudou().hasOnly(['atualizadoPor'])
           && request.resource.data.atualizadoPor is string && request.resource.data.atualizadoPor.size() <= 60;

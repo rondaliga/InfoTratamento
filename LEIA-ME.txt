@@ -68,7 +68,7 @@ TRIAGEM (triagem.html + triagem.js)
   (+ especialidade e CRM, opcionais) e anexos (.pdf .jpg .jpeg .png, SEM limite de quantidade; PDF até 3 MB cada;
   fotos são reduzidas no navegador). Imagens podem ser coladas com Ctrl+V / Cmd+V ou pelo botão "Colar imagem".
   Anexos têm pré-visualização (miniatura/janela) e download. Gera o protocolo LIGA-XXXXX e mostra o comprovante.
-- Consultar Protocolo: busca direta pelo número. Link direto: triagem.html?protocolo=LIGA-XXXXX
+- Consultar Protocolo: busca direta pelo número; o botão "🧾 Gerar comprovante" emite o comprovante (2ª via, só com dados públicos) quantas vezes for preciso. Link direto: triagem.html?protocolo=LIGA-XXXXX
 - Painel de Controle > Triagem (Gestor/Administrador): cartões com busca, filtros, detalhes (CPF, idade, contato com
   WhatsApp/ligar, anexos com miniatura, visualização e download) e altera o status (Pendente / Analisando / Autorizado / Não Autorizado). O cartão mostra o nº de pendentes.
 - Firestore: triagens/{protocolo} (público p/ consulta) e triagens/{protocolo}/privado/dados (só gestão).
