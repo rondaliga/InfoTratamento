@@ -162,7 +162,7 @@
     modalHead = modalBox.querySelector('.modal-head');
     modalBody = modalBox.querySelector('.modal-body');
     modalFoot = modalBox.querySelector('.modal-foot');
-    modalBox.querySelector('.modal-x').addEventListener('click', UI.closeModal);
+    modalBox.querySelector('.modal-x').addEventListener('click', function () { if (!UI.backModal()) UI.closeModal(); });   /* × volta para a tela anterior; na primeira tela fecha */
     /* clicar fora da janela NÃO fecha, exceto no visualizador de imagens (o.outsideClose) */
     modalEl.addEventListener('click', function (e) { if (e.target === modalEl && modalEl.dataset.outside === '1') { if (modalStack.length) UI.backModal(); else UI.closeModal(); } });
   }
@@ -175,8 +175,9 @@
   UI.openModal = function (o) {
     ensureModal();
     if (o.stack && modalEl.classList.contains('show')) {
+      var rolagem = modalBody.scrollTop;   /* lê ANTES de mover o conteúdo (depois disso o valor vira 0) */
       modalStack.push({ outside: modalEl.dataset.outside, cls: modalBox.className, head: moveNodes(modalHead), headDisp: modalHead.style.display,
-        body: moveNodes(modalBody), scroll: modalBody.scrollTop, foot: moveNodes(modalFoot), footDisp: modalFoot.style.display, focus: lastFocus });
+        body: moveNodes(modalBody), scroll: rolagem, foot: moveNodes(modalFoot), footDisp: modalFoot.style.display, focus: lastFocus });
       modalHead.innerHTML = ''; modalBody.innerHTML = ''; modalFoot.innerHTML = ''; modalFoot.onclick = null;
     } else if (!modalEl.classList.contains('show')) modalStack = [];
     modalEl.dataset.outside = o.outsideClose ? '1' : '';
@@ -221,7 +222,7 @@
 
   /* ---------- atalhos de teclado ---------- */
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { UI.closeModal(); toggleMenu(false); return; }
+    if (e.key === 'Escape') { if (!UI.backModal()) UI.closeModal(); toggleMenu(false); return; }
     if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '')) {
       var s = document.querySelector('.search input');
       if (s) { e.preventDefault(); s.focus(); s.select(); }

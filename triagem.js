@@ -790,7 +790,7 @@
       const st = document.createElement('style'); st.id = 'cpCss'; st.textContent = CP_CSS; document.head.appendChild(st);
     }
     const m = UI.openModal({
-      bare: true, size: 'wide',
+      bare: true, size: 'wide', stack: true,   /* no painel, empilha sobre a triagem: × volta para a solicitação */
       html: comprovanteHTML(r, d),
       foot: (r.consultar ? '<button class="tg-btn" id="tgIr" type="button">🔍 Consultar</button>' : '') +
             '<button class="tg-btn" id="tgCopiar" type="button">📋 Copiar Protocolo</button>' +
